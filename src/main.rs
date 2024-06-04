@@ -2,6 +2,6 @@ mod fetch;
 mod parse;
 
 fn main() {
-    println!("Hello, world!");
-    fetch::get_words();
+    let words = fetch::get_words().unwrap();
+    println!("{}", &words[..100])
 }

@@ -8,15 +8,15 @@ fn create_words(path: &std::path::PathBuf) -> io::Result<()> {
         return Ok(());
     }
 
-    const DATA_URL: &str = "https://github.com/dwyl/english-words/raw/master/words_alpha.zip";
+    const DATA_URL: &str = "https://github.com/dwyl/english-words/raw/master/words_alpha.txt";
 
     let body = match rq::blocking::get(DATA_URL).and_then(|res| res.text()) {
         Ok(res) => res,
         Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e.to_string().clone())),
     };
 
-    fs::create_dir(path).unwrap();
-    path.parent().map(|p| std::fs::create_dir_all(p).unwrap());
+    let parent = path.parent().unwrap();
+    std::fs::create_dir_all(parent)?;
 
     match fs::File::create_new(path) {
         Ok(mut f) => Ok(f.write_all(body.as_bytes()).unwrap()),
