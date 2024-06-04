@@ -3,5 +3,5 @@ mod parse;
 
 fn main() {
     println!("Hello, world!");
-    fetch::get_words()
+    fetch::get_words();
 }
