@@ -1,4 +1,7 @@
 /target
 
-# for local test files, remove later
+# for local data files, remove later
 /data
+
+# for local gutenberg files, also remove later
+/gutenberg
