@@ -3,5 +3,7 @@ mod parse;
 
 fn main() {
     let words = fetch::get_words().unwrap();
-    println!("{}", &words[..100])
+    let _print_words: Vec<&str> = words.lines().take(100).collect();
+    let gdata = parse::parse_gutenburg_data().unwrap();
+    // println!(gdata);
 }
