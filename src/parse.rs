@@ -1,5 +1,9 @@
 use regex::Regex;
-use std::{fs, io, path::PathBuf};
+use std::{
+    fs,
+    io::{self, Read},
+    path::PathBuf,
+};
 
 fn clean_ebook(mut ebook_txt: String) -> io::Result<String> {
     let begin_str = r"(?mR)^.*(START|END).*PROJECT GUTENBERG.*";
@@ -36,19 +40,12 @@ fn clean_ebook(mut ebook_txt: String) -> io::Result<String> {
     Ok(ebook_txt)
 }
 
-fn get_ebook(path: PathBuf) -> io::Result<String> {
-    let full_string = fs::read(&path).and_then(|data| {
-        String::from_utf8(data)
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))
-    })?;
+fn get_ebook(path: PathBuf, buffer: &mut String) -> io::Result<()> {
+    let mut handle = fs::OpenOptions::new().read(true).open(&path)?;
 
-    let ret_val = clean_ebook(full_string);
+    // clean_ebook(full_string)?;
 
-    if ret_val.is_err() {
-        eprintln!("bad file path: {}", path.to_str().unwrap())
-    }
-
-    ret_val
+    handle.read_to_string(buffer).map(|_| ())
 }
 
 pub fn parse_gutenburg_data() -> io::Result<String> {
@@ -61,13 +58,15 @@ pub fn parse_gutenburg_data() -> io::Result<String> {
         ));
     }
 
-    let ebooks: Vec<String> = match fs::read_dir(&file) {
-        Ok(dir_iter) => dir_iter
-            .take(20) // TODO remove once we optimize the concatenator
-            .filter_map(|f| f.and_then(|f0| get_ebook(f0.path())).ok())
-            .collect(),
-        Err(e) => return Err(e),
-    };
+    let mut buffer = String::new();
+    let valid_files = fs::read_dir(&file)?.filter_map(|f| f.ok());
+    let txt_files =
+        valid_files.filter(|f| f.path().extension().unwrap().to_str().unwrap() == "txt");
 
-    Ok(ebooks.iter().flat_map(|s| s.chars()).collect())
+    for file in txt_files {
+        println!("{}", file.path().display());
+        get_ebook(file.path(), &mut buffer)?;
+    }
+
+    Ok(buffer)
 }
