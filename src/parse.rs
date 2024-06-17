@@ -5,7 +5,7 @@ use std::{
     path::PathBuf,
 };
 
-fn clean_ebook(mut ebook_txt: String) -> io::Result<String> {
+fn clean_ebook(ebook_txt: &mut String, section_start: usize, section_end: usize) -> io::Result<()> {
     let begin_str = r"(?mR)^.*(START|END).*PROJECT GUTENBERG.*";
 
     let re = Regex::new(begin_str).unwrap();
@@ -13,7 +13,7 @@ fn clean_ebook(mut ebook_txt: String) -> io::Result<String> {
     let proper_start: usize;
     let proper_end: usize;
     {
-        let line_iter: Vec<regex::Match> = re.find_iter(&ebook_txt).collect();
+        let line_iter: Vec<regex::Match> = re.find_iter(ebook_txt).collect();
         if line_iter.len() > 2 || line_iter.is_empty() {
             eprintln!("bad file len: {}", line_iter.len());
             for l in line_iter {
@@ -34,18 +34,21 @@ fn clean_ebook(mut ebook_txt: String) -> io::Result<String> {
         };
     }
 
-    ebook_txt.truncate(proper_end);
-    ebook_txt.replace_range(..proper_start, "");
+    ebook_txt.replace_range(proper_end..section_end, "");
+    ebook_txt.replace_range(section_start..proper_start, "");
 
-    Ok(ebook_txt)
+    Ok(())
 }
 
 fn get_ebook(path: PathBuf, buffer: &mut String) -> io::Result<()> {
+    let begin_len = buffer.len();
+
     let mut handle = fs::OpenOptions::new().read(true).open(&path)?;
+    let _bytes_read = handle.read_to_string(buffer);
 
-    // clean_ebook(full_string)?;
+    let end_len = buffer.len();
 
-    handle.read_to_string(buffer).map(|_| ())
+    clean_ebook(buffer, begin_len, end_len)
 }
 
 pub fn parse_gutenburg_data() -> io::Result<String> {
@@ -60,8 +63,10 @@ pub fn parse_gutenburg_data() -> io::Result<String> {
 
     let mut buffer = String::new();
     let valid_files = fs::read_dir(&file)?.filter_map(|f| f.ok());
-    let txt_files =
-        valid_files.filter(|f| f.path().extension().unwrap().to_str().unwrap() == "txt");
+
+    let ext_check =
+        |f: &fs::DirEntry| f.path().extension().and_then(|oss| oss.to_str()) == Some("txt");
+    let txt_files = valid_files.filter(ext_check);
 
     for file in txt_files {
         println!("{}", file.path().display());
