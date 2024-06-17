@@ -59,6 +59,7 @@ pub fn get_gutenberg_data() -> io::Result<String> {
         return fs::read_to_string(cachefile);
     }
 
+    /* TODO: get gutenburg data procedurally */
     let file = PathBuf::from("./gutenberg/data/raw");
 
     if !file.is_dir() {
