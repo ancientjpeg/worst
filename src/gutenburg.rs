@@ -37,7 +37,7 @@ fn get_ebook(path: PathBuf, buffer: &mut String) -> io::Result<()> {
         }
 
         if reading {
-            buffer.push_str(&line);
+            buffer.push_str(&line.to_lowercase());
             buffer.push_str("\n");
         }
     }
