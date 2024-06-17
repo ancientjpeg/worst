@@ -11,6 +11,11 @@ fn get_text_matcher() -> regex::Regex {
     Regex::new(begin_str).unwrap()
 }
 
+fn line_filter<'a>(line: &'a str) -> impl Iterator<Item = char> + 'a {
+    let cond = |c:&char| c.is_ascii_alphabetic() || c.is_ascii_whitespace(); 
+    line.chars().filter(cond).map(|c| c.to_ascii_lowercase())
+}
+
 fn get_ebook(path: PathBuf, buffer: &mut String) -> io::Result<()> {
     let re = get_text_matcher();
 
@@ -38,7 +43,7 @@ fn get_ebook(path: PathBuf, buffer: &mut String) -> io::Result<()> {
         }
 
         if reading {
-            buffer.push_str(&line.to_lowercase());
+            buffer.extend(line_filter(&line));
             buffer.push_str("\n");
         }
     }
@@ -56,6 +61,7 @@ fn get_ebook(path: PathBuf, buffer: &mut String) -> io::Result<()> {
 pub fn get_gutenberg_data() -> io::Result<String> {
     let cachefile = utils::get_app_tempdir_child("text.txt");
     if cachefile.exists() {
+        println!("Cache for words already existed.");
         return fs::read_to_string(cachefile);
     }
 
