@@ -52,7 +52,7 @@ fn get_ebook(path: PathBuf, buffer: &mut String) -> io::Result<()> {
     Ok(())
 }
 
-pub fn parse_gutenburg_data() -> io::Result<String> {
+pub fn get_gutenburg_data() -> io::Result<String> {
     let file = PathBuf::from("./gutenberg/data/raw");
 
     if !file.is_dir() {
