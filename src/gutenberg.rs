@@ -4,6 +4,7 @@ use std::{
     io::{self, BufRead},
     path::PathBuf,
 };
+use crate::utils;
 
 fn get_text_matcher() -> regex::Regex {
     let begin_str = r"(?mR)^.*(START|END).*PROJECT GUTENBERG.*";
@@ -45,14 +46,19 @@ fn get_ebook(path: PathBuf, buffer: &mut String) -> io::Result<()> {
     if match_count != 2 {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            "Improper match count for gutenburg text.",
+            "Improper match count for gutenberg text.",
         ));
     }
 
     Ok(())
 }
 
-pub fn get_gutenburg_data() -> io::Result<String> {
+pub fn get_gutenberg_data() -> io::Result<String> {
+    let cachefile = utils::get_app_tempdir_child("text.txt");
+    if cachefile.exists() {
+        return fs::read_to_string(cachefile);
+    }
+
     let file = PathBuf::from("./gutenberg/data/raw");
 
     if !file.is_dir() {
@@ -91,5 +97,7 @@ pub fn get_gutenburg_data() -> io::Result<String> {
         }
     }
 
+
+    fs::write(cachefile, buffer.as_bytes())?;
     Ok(buffer)
 }
