@@ -13,10 +13,7 @@ fn get_text_matcher() -> regex::Regex {
 fn get_ebook(path: PathBuf, buffer: &mut String) -> io::Result<()> {
     let re = get_text_matcher();
 
-    let begin_len = buffer.len();
-
-    let handle = fs::OpenOptions::new().read(true).open(&path)?;
-
+    let handle = fs::File::open(&path)?;
     let _ = handle
         .metadata()
         .and_then(|md| Ok(buffer.reserve(buffer.len() + md.len() as usize)));
@@ -46,7 +43,6 @@ fn get_ebook(path: PathBuf, buffer: &mut String) -> io::Result<()> {
     }
 
     if match_count != 2 {
-        buffer.truncate(begin_len);
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
             "Improper match count for gutenburg text.",
@@ -74,8 +70,10 @@ pub fn parse_gutenburg_data() -> io::Result<String> {
     let txt_files = valid_files.filter(ext_check);
 
     for file in txt_files {
+        let safe_len = buffer.len();
         let res = get_ebook(file.path(), &mut buffer);
         if res.is_err() {
+            buffer.truncate(safe_len);
             eprintln!(
                 "Error reading {}: {}",
                 file.path().to_str().unwrap(),
