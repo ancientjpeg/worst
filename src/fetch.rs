@@ -1,6 +1,7 @@
+use crate::utils;
 use std::fs;
 use std::io;
-use std::io::Read;
+use std::io::BufRead;
 use std::io::Write;
 
 fn create_words(path: &std::path::PathBuf) -> io::Result<()> {
@@ -24,12 +25,35 @@ fn create_words(path: &std::path::PathBuf) -> io::Result<()> {
     }
 }
 
-pub fn get_words() -> io::Result<String> {
-    let file: std::path::PathBuf = ["data", "words.txt"].iter().collect();
-    create_words(&file)?;
+fn valid_word(word: &str) -> bool {
+    const VALID_SINGLE_LETTER_WORDS: [&'static str; 2] = ["a", "i"];
+    if word.len() == 1 {
+        return VALID_SINGLE_LETTER_WORDS.contains(&word);
+    }
+    const INVALID_WORDS: [&'static str; 1] = ["ve"];
+    return !INVALID_WORDS.contains(&word);
+}
 
-    let mut words: String = Default::default();
-    let mut handle = fs::File::open(&file)?;
+pub type WordMap = std::collections::BTreeMap<String, usize>;
 
-    return handle.read_to_string(&mut words).map(|_| words);
+pub fn get_words() -> io::Result<WordMap> {
+    let cachefile = utils::get_app_tempdir_child("words.txt");
+    create_words(&cachefile)?;
+
+    let handle = fs::File::open(&cachefile)?;
+    let reader = io::BufReader::new(handle);
+
+    let mut map = WordMap::new();
+
+    for line in reader.lines() {
+        let l = line?;
+
+        if !valid_word(&l) {
+            continue;
+        };
+
+        map.insert(l, 0usize);
+    }
+
+    Ok(map)
 }

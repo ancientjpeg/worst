@@ -1,3 +1,4 @@
+use crate::utils;
 use regex::Regex;
 use std::{
     fs,
@@ -8,6 +9,19 @@ use std::{
 fn get_text_matcher() -> regex::Regex {
     let begin_str = r"(?mR)^.*(START|END).*PROJECT GUTENBERG.*";
     Regex::new(begin_str).unwrap()
+}
+
+fn line_filter<'a>(line: &'a str) -> impl Iterator<Item = char> + 'a {
+    let filter_fn = |c: &char| *c != '\'';
+
+    let map_fn = |c: char| -> char {
+        if !c.is_ascii_alphabetic() {
+            return ' ';
+        }
+        c.to_ascii_lowercase()
+    };
+
+    line.chars().filter(filter_fn).map(map_fn)
 }
 
 fn get_ebook(path: PathBuf, buffer: &mut String) -> io::Result<()> {
@@ -37,7 +51,7 @@ fn get_ebook(path: PathBuf, buffer: &mut String) -> io::Result<()> {
         }
 
         if reading {
-            buffer.push_str(&line);
+            buffer.extend(line_filter(&line));
             buffer.push_str("\n");
         }
     }
@@ -45,14 +59,21 @@ fn get_ebook(path: PathBuf, buffer: &mut String) -> io::Result<()> {
     if match_count != 2 {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            "Improper match count for gutenburg text.",
+            "Improper match count for gutenberg text.",
         ));
     }
 
     Ok(())
 }
 
-pub fn get_gutenburg_data() -> io::Result<String> {
+pub fn get_gutenberg_data() -> io::Result<String> {
+    let cachefile = utils::get_app_tempdir_child("text.txt");
+    if cachefile.exists() {
+        println!("Cache for words already existed.");
+        return fs::read_to_string(cachefile);
+    }
+
+    /* TODO: get gutenburg data procedurally */
     let file = PathBuf::from("./gutenberg/data/raw");
 
     if !file.is_dir() {
@@ -67,20 +88,24 @@ pub fn get_gutenburg_data() -> io::Result<String> {
 
     let ext_check =
         |f: &fs::DirEntry| f.path().extension().and_then(|oss| oss.to_str()) == Some("txt");
-    let txt_files = valid_files.filter(ext_check);
+    let txt_files: Vec<fs::DirEntry> = valid_files.filter(ext_check).collect();
 
-    for file in txt_files {
+    println!("Parsing gutenberg files to assemble word data.");
+    for (i, file) in txt_files.iter().enumerate() {
         let safe_len = buffer.len();
         let res = get_ebook(file.path(), &mut buffer);
         if res.is_err() {
             buffer.truncate(safe_len);
-            eprintln!(
-                "Error reading {}: {}",
-                file.path().to_str().unwrap(),
-                res.err().unwrap()
-            );
+            // eprintln!(
+            //     "Error reading {}: {}",
+            //     file.path().to_str().unwrap(),
+            //     res.err().unwrap()
+            // );
         }
+
+        utils::print_status_bar(i as f32 / txt_files.len() as f32);
     }
+    println!("");
 
     if cfg!(debug_assertions) {
         if get_text_matcher().is_match(&buffer) {
@@ -91,5 +116,6 @@ pub fn get_gutenburg_data() -> io::Result<String> {
         }
     }
 
+    fs::write(cachefile, buffer.as_bytes())?;
     Ok(buffer)
 }
