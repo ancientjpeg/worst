@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs;
 use std::io;
 use std::io::Read;
@@ -24,12 +25,18 @@ fn create_words(path: &std::path::PathBuf) -> io::Result<()> {
     }
 }
 
-pub fn get_words() -> io::Result<String> {
+pub fn get_words() -> io::Result<HashMap<String, usize>> {
     let file: std::path::PathBuf = ["data", "words.txt"].iter().collect();
     create_words(&file)?;
 
     let mut words: String = Default::default();
     let mut handle = fs::File::open(&file)?;
 
-    return handle.read_to_string(&mut words).map(|_| words);
+    handle.read_to_string(&mut words)?;
+
+    let mut map = HashMap::new();
+
+    map.insert("".to_string(), 0usize);
+
+    Ok(map)
 }
