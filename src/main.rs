@@ -1,7 +1,8 @@
+mod analyzer;
 mod fetch;
-mod gutenburg;
+mod gutenberg;
+mod utils;
 
 fn main() {
-    let gdata = gutenburg::get_gutenburg_data().unwrap();
-    println!("{}", gdata.len());
+    analyzer::analyze();
 }

@@ -1,3 +1,4 @@
+use crate::utils;
 use std::collections::HashMap;
 use std::fs;
 use std::io;
@@ -26,11 +27,11 @@ fn create_words(path: &std::path::PathBuf) -> io::Result<()> {
 }
 
 pub fn get_words() -> io::Result<HashMap<String, usize>> {
-    let file: std::path::PathBuf = ["data", "words.txt"].iter().collect();
-    create_words(&file)?;
+    let cachefile = utils::get_app_tempdir_child("words.txt");
+    create_words(&cachefile)?;
 
     let mut words: String = Default::default();
-    let mut handle = fs::File::open(&file)?;
+    let mut handle = fs::File::open(&cachefile)?;
 
     handle.read_to_string(&mut words)?;
 
