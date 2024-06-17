@@ -1,10 +1,10 @@
+use crate::utils;
 use regex::Regex;
 use std::{
     fs,
     io::{self, BufRead},
     path::PathBuf,
 };
-use crate::utils;
 
 fn get_text_matcher() -> regex::Regex {
     let begin_str = r"(?mR)^.*(START|END).*PROJECT GUTENBERG.*";
@@ -12,13 +12,12 @@ fn get_text_matcher() -> regex::Regex {
 }
 
 fn line_filter<'a>(line: &'a str) -> impl Iterator<Item = char> + 'a {
-    let filter_fn = |c:&char| *c != '\''; 
+    let filter_fn = |c: &char| *c != '\'';
 
-    let map_fn = |c:char| -> char{ 
-        if !c.is_ascii_alphabetic() 
-        {
-            return ' '
-        } 
+    let map_fn = |c: char| -> char {
+        if !c.is_ascii_alphabetic() {
+            return ' ';
+        }
         c.to_ascii_lowercase()
     };
 
@@ -89,20 +88,24 @@ pub fn get_gutenberg_data() -> io::Result<String> {
 
     let ext_check =
         |f: &fs::DirEntry| f.path().extension().and_then(|oss| oss.to_str()) == Some("txt");
-    let txt_files = valid_files.filter(ext_check);
+    let txt_files: Vec<fs::DirEntry> = valid_files.filter(ext_check).collect();
 
-    for file in txt_files {
+    println!("Parsing gutenberg files to assemble word data.");
+    for (i, file) in txt_files.iter().enumerate() {
         let safe_len = buffer.len();
         let res = get_ebook(file.path(), &mut buffer);
         if res.is_err() {
             buffer.truncate(safe_len);
-            eprintln!(
-                "Error reading {}: {}",
-                file.path().to_str().unwrap(),
-                res.err().unwrap()
-            );
+            // eprintln!(
+            //     "Error reading {}: {}",
+            //     file.path().to_str().unwrap(),
+            //     res.err().unwrap()
+            // );
         }
+
+        utils::print_status_bar(i as f32 / txt_files.len() as f32);
     }
+    println!("");
 
     if cfg!(debug_assertions) {
         if get_text_matcher().is_match(&buffer) {
@@ -112,7 +115,6 @@ pub fn get_gutenberg_data() -> io::Result<String> {
             ));
         }
     }
-
 
     fs::write(cachefile, buffer.as_bytes())?;
     Ok(buffer)
