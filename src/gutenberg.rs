@@ -12,8 +12,17 @@ fn get_text_matcher() -> regex::Regex {
 }
 
 fn line_filter<'a>(line: &'a str) -> impl Iterator<Item = char> + 'a {
-    let cond = |c:&char| c.is_ascii_alphabetic() || c.is_ascii_whitespace(); 
-    line.chars().filter(cond).map(|c| c.to_ascii_lowercase())
+    let filter_fn = |c:&char| *c != '\''; 
+
+    let map_fn = |c:char| -> char{ 
+        if !c.is_ascii_alphabetic() 
+        {
+            return ' '
+        } 
+        c.to_ascii_lowercase()
+    };
+
+    line.chars().filter(filter_fn).map(map_fn)
 }
 
 fn get_ebook(path: PathBuf, buffer: &mut String) -> io::Result<()> {
