@@ -3,27 +3,11 @@ use std::io::Write;
 use crate::fetch;
 use crate::gutenberg;
 
-fn print_status_bar(proportion: f32) {
-    const WIDTH: usize = 78;
-
-    let progress_chars = ((WIDTH as f32) * proportion).round() as usize;
-    let remaining_chars = WIDTH - progress_chars;
-
-    let prog = "=".repeat(progress_chars);
-    let rem = " ".repeat(remaining_chars);
-    let bar = format!("[{prog}{rem}]");
-
-    let pct_string = format!("\r{:0>5.2}% complete.", proportion * 100.);
-
-    print!("{pct_string} {bar}");
-    std::io::stdout().flush().unwrap();
-}
-
 pub fn analyze() -> Option<fetch::WordMap> {
     let mut word_map = fetch::get_words().ok()?;
     let word_data = gutenberg::get_gutenberg_data().ok()?;
 
-    let word_data_split = word_data.split_whitespace().take(100_000_000);
+    let word_data_split = word_data.split_whitespace().take(1_000_000);
 
     println!("Begin wordcount.");
     let wordcount: f32 = word_data_split.clone().count() as f32;
@@ -41,7 +25,7 @@ pub fn analyze() -> Option<fetch::WordMap> {
 
         if i % 10_000 == 0 && i > 0 {
             let complete_pct = i as f32 / wordcount;
-            print_status_bar(complete_pct)
+            crate::utils::print_status_bar(complete_pct)
         }
     }
 
