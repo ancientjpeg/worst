@@ -1,54 +1,59 @@
 use regex::Regex;
 use std::{
     fs,
-    io::{self, Read},
+    io::{self, BufRead},
     path::PathBuf,
 };
 
-fn clean_ebook(ebook_txt: &mut String, section_start: usize, section_end: usize) -> io::Result<()> {
+fn get_text_matcher() -> regex::Regex {
     let begin_str = r"(?mR)^.*(START|END).*PROJECT GUTENBERG.*";
-
-    let re = Regex::new(begin_str).unwrap();
-
-    let proper_start: usize;
-    let proper_end: usize;
-    {
-        let line_iter: Vec<regex::Match> = re.find_iter(ebook_txt).collect();
-        if line_iter.len() > 2 || line_iter.is_empty() {
-            eprintln!("bad file len: {}", line_iter.len());
-            for l in line_iter {
-                eprintln!("{}", l.as_str());
-            }
-
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Found invalid number of start/end matches",
-            ));
-        }
-
-        proper_start = line_iter[0].end();
-        proper_end = if line_iter.len() == 1 {
-            ebook_txt.len()
-        } else {
-            line_iter[1].start()
-        };
-    }
-
-    ebook_txt.replace_range(proper_end..section_end, "");
-    ebook_txt.replace_range(section_start..proper_start, "");
-
-    Ok(())
+    Regex::new(begin_str).unwrap()
 }
 
 fn get_ebook(path: PathBuf, buffer: &mut String) -> io::Result<()> {
+    let re = get_text_matcher();
+
     let begin_len = buffer.len();
 
-    let mut handle = fs::OpenOptions::new().read(true).open(&path)?;
-    let _bytes_read = handle.read_to_string(buffer);
+    let handle = fs::OpenOptions::new().read(true).open(&path)?;
 
-    let end_len = buffer.len();
+    let _ = handle
+        .metadata()
+        .and_then(|md| Ok(buffer.reserve(buffer.len() + md.len() as usize)));
 
-    clean_ebook(buffer, begin_len, end_len)
+    let reader = io::BufReader::new(handle);
+
+    let mut reading: bool = false;
+    let mut match_count: i32 = 0;
+
+    for line_res in reader.lines() {
+        let line = line_res?;
+
+        if re.is_match(&line) {
+            match_count += 1;
+            if reading {
+                break;
+            } else {
+                reading = true;
+                continue;
+            }
+        }
+
+        if reading {
+            buffer.push_str(&line);
+            buffer.push_str("\n");
+        }
+    }
+
+    if match_count != 2 {
+        buffer.truncate(begin_len);
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "Improper match count for gutenburg text.",
+        ));
+    }
+
+    Ok(())
 }
 
 pub fn parse_gutenburg_data() -> io::Result<String> {
@@ -69,8 +74,23 @@ pub fn parse_gutenburg_data() -> io::Result<String> {
     let txt_files = valid_files.filter(ext_check);
 
     for file in txt_files {
-        println!("{}", file.path().display());
-        get_ebook(file.path(), &mut buffer)?;
+        let res = get_ebook(file.path(), &mut buffer);
+        if res.is_err() {
+            eprintln!(
+                "Error reading {}: {}",
+                file.path().to_str().unwrap(),
+                res.err().unwrap()
+            );
+        }
+    }
+
+    if cfg!(debug_assertions) {
+        if get_text_matcher().is_match(&buffer) {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Processing failed: metadata was not properly stripped.",
+            ));
+        }
     }
 
     Ok(buffer)
