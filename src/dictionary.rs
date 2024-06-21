@@ -1,14 +1,15 @@
 use std::collections::HashMap;
 
 use rq;
-use serde::{Deserialize, Serialize};
-// use serde_json::Result;
+use serde::Deserialize;
 
+#[derive(Deserialize)]
 struct WiktionaryDefinition {
     definition: String,
     examples: Vec<String>,
 }
 
+#[derive(Deserialize)]
 struct WiktionaryUsage {
     partOfSpeech: String,
     definitions: Vec<WiktionaryDefinition>,
@@ -37,7 +38,7 @@ fn get_rq(word: &str) -> Option<Defintion> {
     let mut map = HashMap::new();
     map.insert("partOfSpeech", "");
 
-    let json = result.json();
+    let json = result.json::<WiktionaryResponse>();
 
     let d = Defintion {
         word: String::from(word),
