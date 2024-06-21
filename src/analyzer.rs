@@ -6,6 +6,7 @@ use crate::fetch;
 use crate::gutenberg;
 use crate::utils;
 
+#[allow(dead_code)] // TODO remove
 pub fn analyze() -> Option<fetch::WordMap> {
     let mut word_map = fetch::get_words().ok()?;
     let word_data = gutenberg::get_gutenberg_data().ok()?;

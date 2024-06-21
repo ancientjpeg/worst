@@ -1,49 +1,69 @@
-use std::collections::HashMap;
-
 use rq;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct WiktionaryDefinition {
     definition: String,
-    examples: Vec<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
+#[allow(non_snake_case)] // I don't have a Damn Choice...
 struct WiktionaryUsage {
     partOfSpeech: String,
+    language: String,
     definitions: Vec<WiktionaryDefinition>,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct WiktionaryResponse {
-    usages: Vec<WiktionaryUsage>,
+    en: Vec<WiktionaryUsage>,
 }
 
-struct Defintion {
-    word: String,
-    definition: String,
+pub struct Defintion {
+    pub word: String,
+    pub definition: String,
 }
 
-fn get_rq(word: &str) -> Option<Defintion> {
+fn parse_html(mut text: String) -> String {
+    while let Some(idx) = text.find('<') {
+        let end_idx = text.find('>').map_or(text.len(), |i| i + 1);
+        text.replace_range(idx..end_idx, "");
+    }
+
+    text
+}
+
+fn map_err_to_str<T>(e: T) -> String
+where
+    T: ToString,
+{
+    e.to_string()
+}
+
+pub fn get_rq(word: &str) -> Result<Defintion, String> {
     let url = format!(
         "https://en.wiktionary.org/api/rest_v1/page/definition/{}",
         word
     );
 
-    let full_url = rq::Url::parse_with_params(&url, &[("redirect", "false")]).ok()?;
+    let full_url =
+        rq::Url::parse_with_params(&url, &[("redirect", "false")]).map_err(map_err_to_str)?;
 
-    let result = rq::blocking::get(full_url).ok()?;
+    let result = rq::blocking::get(full_url).map_err(map_err_to_str)?;
 
-    let mut map = HashMap::new();
-    map.insert("partOfSpeech", "");
+    let text = result.text().map_err(map_err_to_str)?;
 
-    let json = result.json::<WiktionaryResponse>();
+    let wiki_res = serde_json::from_str::<WiktionaryResponse>(&text);
+
+    let wiki = match wiki_res {
+        Ok(w) => w,
+        Err(e) => return Err(e.to_string()),
+    };
 
     let d = Defintion {
         word: String::from(word),
-        definition: String::new(),
+        definition: parse_html(String::from(&wiki.en[0].definitions[0].definition)),
     };
 
-    Some(d)
+    Ok(d)
 }
