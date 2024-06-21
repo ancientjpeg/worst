@@ -1,5 +1,6 @@
 mod analyzer;
 mod dictionary;
+mod error;
 mod fetch;
 mod gutenberg;
 mod utils;

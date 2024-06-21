@@ -1,3 +1,4 @@
+use crate::error::Error;
 use rq;
 use serde::{Deserialize, Serialize};
 
@@ -24,13 +25,18 @@ pub struct Defintion {
     pub definition: String,
 }
 
-fn parse_html(mut text: String) -> String {
+fn parse_html(mut text: String) -> Result<String, Error> {
     while let Some(idx) = text.find('<') {
         let end_idx = text.find('>').map_or(text.len(), |i| i + 1);
+
+        if end_idx == text.len() && text.chars().rev().next() != Some('>') {
+            return Err(Error::from("Error while removing tags from html text"));
+        }
+
         text.replace_range(idx..end_idx, "");
     }
 
-    text
+    Ok(text)
 }
 
 fn map_err_to_str<T>(e: T) -> String
@@ -40,7 +46,7 @@ where
     e.to_string()
 }
 
-pub fn get_rq(word: &str) -> Result<Defintion, String> {
+pub fn get_rq(word: &str) -> Result<Defintion, Error> {
     let url = format!(
         "https://en.wiktionary.org/api/rest_v1/page/definition/{}",
         word
@@ -57,13 +63,29 @@ pub fn get_rq(word: &str) -> Result<Defintion, String> {
 
     let wiki = match wiki_res {
         Ok(w) => w,
-        Err(e) => return Err(e.to_string()),
+        Err(e) => return Err(Error::from(e)),
     };
 
     let d = Defintion {
         word: String::from(word),
-        definition: parse_html(String::from(&wiki.en[0].definitions[0].definition)),
+        definition: parse_html(String::from(&wiki.en[0].definitions[0].definition))?,
     };
 
     Ok(d)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_html_parse() {
+        let s = "<tag>text</tag>";
+        let comp = Ok("text");
+        assert_eq!(parse_html(s.to_string()), comp);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_html_parse_bad() {}
 }
