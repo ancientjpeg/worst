@@ -25,7 +25,7 @@ fn word_counts_to_prevalence(
 
 #[allow(dead_code)] // TODO remove
 pub fn analyze() -> io::Result<fetch::WordPrevalenceMap> {
-    let ofile = utils::get_app_tempdir_child("output.txt");
+    let ofile = utils::tempdir::get_child("output.txt");
 
     // prefetch if ofile exists
     if ofile.exists() {

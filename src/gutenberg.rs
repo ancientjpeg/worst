@@ -67,7 +67,7 @@ fn get_ebook(path: PathBuf, buffer: &mut String) -> io::Result<()> {
 }
 
 pub fn get_gutenberg_data() -> io::Result<String> {
-    let cachefile = utils::get_app_tempdir_child("text.txt");
+    let cachefile = utils::tempdir::get_child("text.txt");
     if cachefile.exists() {
         println!("Cache for words already existed.");
         return fs::read_to_string(cachefile);

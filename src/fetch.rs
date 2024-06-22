@@ -38,7 +38,7 @@ pub type WordCountMap = std::collections::HashMap<String, usize>;
 pub type WordPrevalenceMap = std::collections::HashMap<String, f32>;
 
 pub fn get_words() -> io::Result<WordCountMap> {
-    let cachefile = utils::get_app_tempdir_child("words.txt");
+    let cachefile = utils::tempdir::get_child("words.txt");
     create_words(&cachefile)?;
 
     let handle = fs::File::open(&cachefile)?;
