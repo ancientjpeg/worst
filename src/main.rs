@@ -15,8 +15,11 @@ fn main() {
         }
     };
 
-    let filtered_words = word_rates.iter().filter(|(k, v)| {
-        let occ = **v as f32 / word_rates.len() as f32;
+    let filtered_words = word_rates.iter().filter(|&(k, v)| {
+        let occ = v / word_rates.len() as f32;
+        if utils::fitness::word_is_compound(&k, &word_rates, None) {
+            return false;
+        }
         if k.ends_with("ed") {
             return false;
         }
