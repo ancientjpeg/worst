@@ -5,15 +5,16 @@ use serialization::ToFile;
 use crate::fetch;
 use crate::gutenberg;
 use crate::utils;
+use crate::utils::types;
 
 mod serialization;
 
 fn word_counts_to_prevalence(
-    counts: &fetch::WordCountMap,
+    counts: &types::WordCountMap,
     total_words: usize,
-) -> fetch::WordPrevalenceMap {
+) -> types::WordPrevalenceMap {
     let total = total_words as f32;
-    let mut ret = fetch::WordPrevalenceMap::new();
+    let mut ret = types::WordPrevalenceMap::new();
 
     for (k, v) in counts.iter() {
         let prevalence = *v as f32 / total;
@@ -24,7 +25,7 @@ fn word_counts_to_prevalence(
 }
 
 #[allow(dead_code)] // TODO remove
-pub fn analyze() -> io::Result<fetch::WordPrevalenceMap> {
+pub fn analyze(dictionary: Option<&types::Dict>) -> io::Result<types::WordPrevalenceMap> {
     let ofile = utils::tempdir::get_child("output.txt");
 
     // prefetch if ofile exists
@@ -32,7 +33,9 @@ pub fn analyze() -> io::Result<fetch::WordPrevalenceMap> {
         return serialization::FromFile::from_file(&ofile);
     }
 
-    let mut count_map = fetch::get_words()?;
+    // let mut dict = fetch::get_dictionary()?;
+    let dict = dictionary.unwrap();
+    let mut count_map = types::WordCountMap::new();
     let word_data = gutenberg::get_gutenberg_data()?;
 
     let word_data_split = word_data.split_whitespace();
@@ -44,11 +47,14 @@ pub fn analyze() -> io::Result<fetch::WordPrevalenceMap> {
 
     println!("Begin analysis.");
     for (i, word) in word_data_split.enumerate() {
-        if count_map.contains_key(word) {
-            let val = count_map.get_mut(word).unwrap();
-            *val += 1usize;
-            // } else {
-            //     println!("Missed a word! {:20}", word);
+        if dict.contains(word) {
+            match count_map.get_mut(word) {
+                Some(r) => *r += 1,
+                None => {
+                    count_map.insert(word.to_string(), 0usize);
+                    ()
+                }
+            }
         }
 
         if i % 10_000 == 0 && i > 0 {
@@ -57,8 +63,6 @@ pub fn analyze() -> io::Result<fetch::WordPrevalenceMap> {
         }
     }
     println!("");
-
-    count_map.retain(|_, &mut v| v != 0);
 
     let prevalence_map = word_counts_to_prevalence(&count_map, wordcount);
 

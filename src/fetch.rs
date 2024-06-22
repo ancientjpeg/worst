@@ -1,4 +1,6 @@
 use crate::utils;
+use crate::utils::types;
+
 use std::fs;
 use std::io;
 use std::io::BufRead;
@@ -34,17 +36,14 @@ fn valid_word(word: &str) -> bool {
     return !INVALID_WORDS.contains(&word);
 }
 
-pub type WordCountMap = std::collections::HashMap<String, usize>;
-pub type WordPrevalenceMap = std::collections::HashMap<String, f32>;
-
-pub fn get_words() -> io::Result<WordCountMap> {
+pub fn get_dictionary() -> io::Result<types::Dict> {
     let cachefile = utils::tempdir::get_child("words.txt");
     create_words(&cachefile)?;
 
     let handle = fs::File::open(&cachefile)?;
     let reader = io::BufReader::new(handle);
 
-    let mut map = WordCountMap::new();
+    let mut dict = types::Dict::new();
 
     for line in reader.lines() {
         let l = line?;
@@ -53,8 +52,8 @@ pub fn get_words() -> io::Result<WordCountMap> {
             continue;
         };
 
-        map.insert(l, 0usize);
+        dict.insert(l);
     }
 
-    Ok(map)
+    Ok(dict)
 }
