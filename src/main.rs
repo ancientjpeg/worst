@@ -4,7 +4,7 @@ mod fetch;
 mod gutenberg;
 mod utils;
 
-use rand::prelude::thread_rng;
+use rand::prelude::{thread_rng, Rng};
 
 fn main() {
     let word_rates = match analyzer::analyze() {
