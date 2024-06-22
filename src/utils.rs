@@ -1,7 +1,9 @@
 use std::io;
 use std::io::Write;
 
+pub mod fitness;
 pub mod tempdir;
+pub mod types;
 
 pub fn print_status_bar(proportion: f32) {
     const WIDTH: usize = 60;

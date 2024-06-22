@@ -5,15 +5,16 @@ use serialization::ToFile;
 use crate::fetch;
 use crate::gutenberg;
 use crate::utils;
+use crate::utils::types;
 
 mod serialization;
 
 fn word_counts_to_prevalence(
-    counts: &fetch::WordCountMap,
+    counts: &types::WordCountMap,
     total_words: usize,
-) -> fetch::WordPrevalenceMap {
+) -> types::WordPrevalenceMap {
     let total = total_words as f32;
-    let mut ret = fetch::WordPrevalenceMap::new();
+    let mut ret = types::WordPrevalenceMap::new();
 
     for (k, v) in counts.iter() {
         let prevalence = *v as f32 / total;
@@ -24,7 +25,7 @@ fn word_counts_to_prevalence(
 }
 
 #[allow(dead_code)] // TODO remove
-pub fn analyze() -> io::Result<fetch::WordPrevalenceMap> {
+pub fn analyze() -> io::Result<types::WordPrevalenceMap> {
     let ofile = utils::tempdir::get_child("output.txt");
 
     // prefetch if ofile exists
