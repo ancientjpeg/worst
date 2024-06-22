@@ -7,9 +7,9 @@ use crate::gutenberg;
 use crate::utils;
 
 #[allow(dead_code)] // TODO remove
-pub fn analyze() -> Option<fetch::WordMap> {
-    let mut word_map = fetch::get_words().ok()?;
-    let word_data = gutenberg::get_gutenberg_data().ok()?;
+pub fn analyze() -> Result<fetch::WordMap, Box<dyn std::error::Error>> {
+    let mut word_map = fetch::get_words()?;
+    let word_data = gutenberg::get_gutenberg_data()?;
 
     let word_data_split = word_data.split_whitespace();
 
@@ -54,5 +54,5 @@ pub fn analyze() -> Option<fetch::WordMap> {
         writer.write(line.as_bytes()).unwrap();
     }
 
-    Some(word_map)
+    Ok(word_map)
 }
