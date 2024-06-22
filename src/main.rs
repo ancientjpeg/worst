@@ -7,7 +7,15 @@ mod utils;
 use rand::prelude::{thread_rng, Rng};
 
 fn main() {
-    let word_rates = match analyzer::analyze() {
+    let dict = match fetch::get_dictionary() {
+        Ok(d) => d,
+        Err(e) => {
+            println!("Analysis failed due to error: {}", e);
+            return;
+        }
+    };
+
+    let word_rates = match analyzer::analyze(Some(&dict)) {
         Ok(val) => val,
         Err(e) => {
             println!("Analysis failed due to error: {}", e);
@@ -15,37 +23,45 @@ fn main() {
         }
     };
 
-    let filtered_words = word_rates.iter().filter(|&(k, v)| {
-        let occ = v / word_rates.len() as f32;
-        if let Some(w) = utils::fitness::word_is_compound(&k, &word_rates, None) {
-            println!("Word {k} is a compound word. First compound found: {w}");
+    println!("Contains explicit: {}", dict.contains("explicit"));
+    println!("Contains infect: {}", dict.contains("infect"));
+    println!("Contains unsuspected: {}", dict.contains("unsuspected"));
+    assert!(utils::fitness::word_is_compound("infectiously", &dict, None).is_some());
+
+    let filtered_words = word_rates.iter().filter(|&(w, prevalence)| {
+        if (0.0..0.0001).contains(prevalence) && w.len() > 8 {
+            return true;
+        }
+
+        if w.len() < 8 {
             return false;
         }
-        if k.ends_with("ed") {
-            return false;
+
+        match utils::fitness::word_is_compound(&w, &dict, None) {
+            Some(m) => {
+                println!("Word {w} is compound with match {m}");
+                false
+            }
+            None => true,
         }
-        if k.ends_with("ly") {
-            return false;
-        }
-        if k.ends_with("s") {
-            return false;
-        }
-        return (0.0..0.000001).contains(&occ) && k.len() > 8;
     });
 
     let filtered_count = filtered_words.clone().count();
-
     println!("Match count: {filtered_count}");
     for _ in 0..filtered_count {
         let mut r = thread_rng();
         let i: usize = r.gen_range(0..filtered_count);
 
         let (word, prev) = filtered_words.clone().nth(i).unwrap();
-        println!("Chose word {word} with prevalence {:.6}%", *prev * 100.);
+        println!(
+            "======== WORD: {:<20}========\nPrevalence {:.6}%",
+            word.to_uppercase(),
+            *prev * 100.
+        );
         let result = dictionary::get_rq(word);
 
         match result {
-            Ok(r) => println!("Definition of {}:\n{}\n", word, r.definition),
+            Ok(r) => println!("Definition:\n{}\n", r.definition),
             Err(e) => println!("Definition error: {}", e),
         }
     }
