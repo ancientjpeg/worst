@@ -1,3 +1,4 @@
+use std::io;
 use std::io::Write;
 
 pub fn get_app_tempdir() -> std::path::PathBuf {
@@ -27,4 +28,11 @@ pub fn print_status_bar(proportion: f32) {
 
     print!("\r{pct_string}{bar}");
     std::io::stdout().flush().unwrap();
+}
+
+pub fn make_io_error<T>(msg: T) -> io::Error
+where
+    T: ToString,
+{
+    return io::Error::new(io::ErrorKind::InvalidData, msg.to_string());
 }

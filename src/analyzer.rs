@@ -1,58 +1,68 @@
-use std::fs;
-use std::io::BufWriter;
-use std::io::Write;
+use std::io;
+
+use serialization::ToFile;
 
 use crate::fetch;
 use crate::gutenberg;
 use crate::utils;
 
+mod serialization;
+
+fn word_counts_to_prevalence(
+    counts: &fetch::WordCountMap,
+    total_words: usize,
+) -> fetch::WordPrevalenceMap {
+    let total = total_words as f32;
+    let mut ret = fetch::WordPrevalenceMap::new();
+
+    for (k, v) in counts.iter() {
+        let prevalence = *v as f32 / total;
+        ret.insert(k.to_string(), prevalence);
+    }
+
+    ret
+}
+
 #[allow(dead_code)] // TODO remove
-pub fn analyze() -> Result<fetch::WordMap, Box<dyn std::error::Error>> {
-    let mut word_map = fetch::get_words()?;
+pub fn analyze() -> io::Result<fetch::WordPrevalenceMap> {
+    let ofile = utils::get_app_tempdir_child("output.txt");
+
+    // prefetch if ofile exists
+    if ofile.exists() {
+        return serialization::FromFile::from_file(&ofile);
+    }
+
+    let mut count_map = fetch::get_words()?;
     let word_data = gutenberg::get_gutenberg_data()?;
 
     let word_data_split = word_data.split_whitespace();
 
     println!("Begin wordcount.");
-    let wordcount: f32 = word_data_split.clone().count() as f32;
+    let wordcount = word_data_split.clone().count();
 
     println!("Wordcount: {}", wordcount);
 
     println!("Begin analysis.");
     for (i, word) in word_data_split.enumerate() {
-        if word_map.contains_key(word) {
-            let val = word_map.get_mut(word).unwrap();
+        if count_map.contains_key(word) {
+            let val = count_map.get_mut(word).unwrap();
             *val += 1usize;
             // } else {
             //     println!("Missed a word! {:20}", word);
         }
 
         if i % 10_000 == 0 && i > 0 {
-            let complete_pct = i as f32 / wordcount;
+            let complete_pct = i as f32 / wordcount as f32;
             crate::utils::print_status_bar(complete_pct)
         }
     }
-
     println!("");
 
-    let mut values: Vec<(&String, &usize)> = word_map.iter().map(|(k, v)| (k, v)).collect();
-    values.sort_by(|(a, _), (b, _)| a.len().cmp(&b.len()));
-    values.sort_by(|(_, a), (_, b)| b.cmp(a));
+    count_map.retain(|_, &mut v| v != 0);
 
-    let ofile = utils::get_app_tempdir_child("output.txt");
+    let prevalence_map = word_counts_to_prevalence(&count_map, wordcount);
 
-    let handle = fs::File::create(ofile).unwrap();
+    prevalence_map.to_file(&ofile)?;
 
-    let mut writer = BufWriter::new(handle);
-
-    for (k, v) in values.iter() {
-        if **v == 0 {
-            continue;
-        };
-        let prevalence = **v as f32 / wordcount * 100.;
-        let line = format!("word: {:<25} prevalence: {:.6}%\n", k, prevalence);
-        writer.write(line.as_bytes()).unwrap();
-    }
-
-    Ok(word_map)
+    Ok(prevalence_map)
 }

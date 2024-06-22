@@ -34,16 +34,17 @@ fn valid_word(word: &str) -> bool {
     return !INVALID_WORDS.contains(&word);
 }
 
-pub type WordMap = std::collections::BTreeMap<String, usize>;
+pub type WordCountMap = std::collections::HashMap<String, usize>;
+pub type WordPrevalenceMap = std::collections::HashMap<String, f32>;
 
-pub fn get_words() -> io::Result<WordMap> {
+pub fn get_words() -> io::Result<WordCountMap> {
     let cachefile = utils::get_app_tempdir_child("words.txt");
     create_words(&cachefile)?;
 
     let handle = fs::File::open(&cachefile)?;
     let reader = io::BufReader::new(handle);
 
-    let mut map = WordMap::new();
+    let mut map = WordCountMap::new();
 
     for line in reader.lines() {
         let l = line?;
