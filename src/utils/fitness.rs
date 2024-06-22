@@ -85,6 +85,7 @@ mod tests {
             "processed word of length {LEN} in {}us",
             now.elapsed().as_micros()
         );
+        // 250us for a long word is permissible on debug build.
         assert!(now.elapsed().as_micros() < 250);
     }
 }
