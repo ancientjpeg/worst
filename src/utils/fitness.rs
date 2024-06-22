@@ -7,8 +7,6 @@ pub fn word_is_compound<T>(word: &str, map: &types::WordMap<T>, min_len: Option<
         return false;
     }
 
-    // let r = [0; 2usize.pow(10)];
-
     // scans in a pyramid up, i.e. scans substr of len min, min+1 ... word.len() - 1
 
     let mut len = min;
