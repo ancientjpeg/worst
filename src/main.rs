@@ -17,7 +17,8 @@ fn main() {
 
     let filtered_words = word_rates.iter().filter(|&(k, v)| {
         let occ = v / word_rates.len() as f32;
-        if utils::fitness::word_is_compound(&k, &word_rates, None) {
+        if let Some(w) = utils::fitness::word_is_compound(&k, &word_rates, None) {
+            println!("Word {k} is a compound word. First compound found: {w}");
             return false;
         }
         if k.ends_with("ed") {
