@@ -11,14 +11,14 @@ use crate::gutenberg;
 use crate::utils;
 
 #[allow(dead_code)] // TODO remove
-pub fn analyze() -> Option<fetch::WordMap> {
+pub fn analyze() -> Result<fetch::WordMap, Box<dyn std::error::Error>> {
     let ofile = utils::get_app_tempdir_child("output.txt");
 
     // prefetch if ofile exists
     if ofile.exists() {
         let mut ret = fetch::WordMap::new();
 
-        let file = fs::File::open(&ofile).ok()?;
+        let file = fs::File::open(&ofile)?;
         let reader = BufReader::new(file);
         let re = Regex::new(r"word: (\w+)\s+prevalence: (.*)%").unwrap();
 
@@ -28,7 +28,7 @@ pub fn analyze() -> Option<fetch::WordMap> {
 
         for l in lines {
             let line = l.unwrap();
-            let caps = re.captures(&line)?;
+            let caps = re.captures(&line).unwrap();
             assert_eq!((&caps).len(), 3usize);
 
             let prevalence: f32 = caps[2].parse().unwrap();
@@ -38,11 +38,11 @@ pub fn analyze() -> Option<fetch::WordMap> {
             }
             ret.insert(caps[1].to_string(), count);
         }
-        return Some(ret);
+        return Ok(ret);
     }
 
-    let mut word_map = fetch::get_words().ok()?;
-    let word_data = gutenberg::get_gutenberg_data().ok()?;
+    let mut word_map = fetch::get_words()?;
+    let word_data = gutenberg::get_gutenberg_data()?;
 
     let word_data_split = word_data.split_whitespace();
 
@@ -85,5 +85,5 @@ pub fn analyze() -> Option<fetch::WordMap> {
         writer.write(line.as_bytes()).unwrap();
     }
 
-    Some(word_map)
+    Ok(word_map)
 }

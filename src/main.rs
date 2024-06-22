@@ -8,8 +8,8 @@ use rand::prelude::*;
 
 fn main() {
     let word_rates = match analyzer::analyze() {
-        Some(val) => val,
-        None => return,
+        Ok(val) => val,
+        Err(_) => return,
     };
 
     let mut filtered_words = word_rates.iter().filter(|(_, v)| {
