@@ -1,10 +1,6 @@
 use std::fs;
-use std::io::BufRead;
-use std::io::BufReader;
 use std::io::BufWriter;
 use std::io::Write;
-
-use regex::Regex;
 
 use crate::fetch;
 use crate::gutenberg;
@@ -12,35 +8,6 @@ use crate::utils;
 
 #[allow(dead_code)] // TODO remove
 pub fn analyze() -> Option<fetch::WordMap> {
-    let ofile = utils::get_app_tempdir_child("output.txt");
-
-    // prefetch if ofile exists
-    if ofile.exists() {
-        let mut ret = fetch::WordMap::new();
-
-        let file = fs::File::open(&ofile).ok()?;
-        let reader = BufReader::new(file);
-        let re = Regex::new(r"word: (\w+)\s+prevalence: (.*)%").unwrap();
-
-        let lines: Vec<_> = reader.lines().collect();
-
-        let wc = lines.len() as f32;
-
-        for l in lines {
-            let line = l.unwrap();
-            let caps = re.captures(&line)?;
-            assert_eq!((&caps).len(), 3usize);
-
-            let prevalence: f32 = caps[2].parse().unwrap();
-            let count = (wc * prevalence).round() as usize;
-            if count == 0 {
-                continue;
-            }
-            ret.insert(caps[1].to_string(), count);
-        }
-        return Some(ret);
-    }
-
     let mut word_map = fetch::get_words().ok()?;
     let word_data = gutenberg::get_gutenberg_data().ok()?;
 
@@ -71,6 +38,8 @@ pub fn analyze() -> Option<fetch::WordMap> {
     let mut values: Vec<(&String, &usize)> = word_map.iter().map(|(k, v)| (k, v)).collect();
     values.sort_by(|(a, _), (b, _)| a.len().cmp(&b.len()));
     values.sort_by(|(_, a), (_, b)| b.cmp(a));
+
+    let ofile = utils::get_app_tempdir_child("output.txt");
 
     let handle = fs::File::create(ofile).unwrap();
 
