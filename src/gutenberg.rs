@@ -88,9 +88,21 @@ pub fn get_gutenberg_data() -> io::Result<String> {
 
     let ext_check =
         |f: &fs::DirEntry| f.path().extension().and_then(|oss| oss.to_str()) == Some("txt");
+
     let txt_files: Vec<fs::DirEntry> = valid_files.filter(ext_check).collect();
+    let total_txt_size: u64 = txt_files
+        .iter()
+        .filter_map(|f| f.metadata().ok().map(|meta| meta.len()))
+        .sum();
+    let total_txt_size_mb: f32 = total_txt_size as f32 / 10e6;
 
     println!("Parsing gutenberg files to assemble word data.");
+    println!(
+        "Got {} files containing {:.2}MB of text.",
+        txt_files.len(),
+        total_txt_size_mb
+    );
+
     for (i, file) in txt_files.iter().enumerate() {
         let safe_len = buffer.len();
         let res = get_ebook(file.path(), &mut buffer);
